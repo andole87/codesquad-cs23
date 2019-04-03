@@ -29,6 +29,9 @@ function byteAdder(byteA, byteB) {
         carry.push(temp[0]);
         answer.push(temp[1]);
     }
-    answer.push(carry[carry.length - 1]);
+
+    if (carry[carry.length - 1]){
+        answer.push(carry[carry.length - 1]);
+    }
     return answer;
 };
