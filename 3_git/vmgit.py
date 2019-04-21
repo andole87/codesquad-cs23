@@ -1,32 +1,35 @@
 import os
 import datetime
-import time
 import json
 
 
 class GitShell:
     command_dic = dict()
+    git_json = dict()
     repos_list = []
     abspath_root_dir = os.path.dirname(os.path.abspath(__file__))
     current_repo_name = ""
     is_checkout = False
-    git_json = dict()
 
     def __init__(self, *args, **kwargs):
         self.command_dic = {
             "init": self.init_git, "status": self.status_git,
             "checkout": self.checkout_git, "new": self.new_git,
             "add": self.add_git, "commit": self.commit_git,
-            "log": self.log_git}
+            "log": self.log_git
+        }
+
         self.repos_list = [name for name in os.listdir(self.abspath_root_dir)
                            if os.path.isdir(os.path.join(self.abspath_root_dir, name))]
+
         self.git_json = {
-            "untracked": ["--Working Directory--"],
-            "unmodified": ["--Unmodified--"],
-            "modified": ["--Modified--"],
-            "staged": ["--Staging Area--"],
-            "git_repo": ["--Git Repository--"],
-            "log": ["--Commit Log--"]
+            "working_tree": {
+                "untracked": {},
+                "unmodified": {},
+                "modified": {},
+            },
+            "staged": {},
+            "git_repo": {},
         }
 
     def git_shell_run(self):
@@ -43,15 +46,13 @@ class GitShell:
 
     def parse_command(self, input_command):
         _parsed_command = input_command.split()
-        try:
-            if _parsed_command[0] == "status":
-                self.status_git()
-            elif _parsed_command[0] == "log":
-                self.log_git()
-            else:
-                self.command_dic[_parsed_command[0]](_parsed_command[1])
-        except Exception as err:
-            raise err
+
+        if _parsed_command[0] == "status":
+            self.status_git()
+        elif _parsed_command[0] == "log":
+            self.log_git()
+        else:
+            self.command_dic[_parsed_command[0]](_parsed_command[1])
 
     def init_git(self, repo_name):
         if repo_name == "":
@@ -61,7 +62,7 @@ class GitShell:
         with open(os.path.join(repo_path, 'git.json'), 'w') as f:
             json.dump(self.git_json, f)
         self.repos_list.append(repo_name)
-        print("created  [{}] repository.".format(repo_name))
+        print("created  <{}> repository.".format(repo_name))
 
     def status_git(self):
         if self.is_checkout:
@@ -70,7 +71,7 @@ class GitShell:
             print("\n".join(self.repos_list))
 
     def checkout_status(self):
-        print(self.git_json)
+        print(self.git_json["working_tree"])
 
     def checkout_git(self, repo_name):
         if not repo_name in self.repos_list:
@@ -78,7 +79,7 @@ class GitShell:
 
         if self.is_checkout:
             with open(os.path.join(self.abspath_root_dir, self.current_repo_name, 'git.json'), 'w') as f:
-                json.dump(self.git_json, f)
+                f.write(json.dumps(self.git_json, indent=2))
 
         print("/{}/checkout".format(repo_name))
         self.is_checkout = True
@@ -87,33 +88,41 @@ class GitShell:
             self.git_json = json.load(f)
 
     def new_git(self, file_name):
-        open(os.path.join(self.abspath_root_dir,
-                          self.current_repo_name, file_name), 'w')
-        self.git_json["untracked"].append("{} {}"
-                                          .format(file_name, datetime.datetime
-                                                  .strptime(time.ctime(os.path.getmtime(file_name)), "%Y-%m-%d %H:%M:%S")))
+        f = open(os.path.join(self.abspath_root_dir,
+                              self.current_repo_name, file_name), 'w+')
+        f.close()
+        self.git_json["working_tree"]["untracked"][file_name] = datetime.datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S")
+        with open(os.path.join(self.abspath_root_dir, self.current_repo_name, 'git.json'), 'w') as f:
+            f.write(json.dumps(self.git_json, indent=2))
 
     def add_git(self, file_name):
-        target = self.git_json["untracked"][1:] + self.git_json["modified"][1:]
-        self.git_json["staged"] += target
+        if file_name == ".":
+            target = self.git_json["working_tree"]["untracked"] + self.git_json["working_tree"]["modified"]
+        else:
+            if file_name in self.git_json["working_tree"]["untracked"].keys():
+                target = {file_name: self.git_json["working_tree"]["untracked"][file_name]}
+            elif file_name in self.git_json["working_tree"]["modified"].keys():
+                target = {file_name: self.git_json["working_tree"]["untracked"][file_name]}
 
-        self.git_json["untracked"] = [x for x in self.git_json["untracked"] if not x in target]
-        self.git_json["modified"] = [x for x in self.git_json["modified"] if not x in target]
+        for x in target.keys():
+            self.git_json["staged"][x] = target[x]
+
+        with open(os.path.join(self.abspath_root_dir, self.current_repo_name, 'git.json'), 'w') as f:
+            f.write(json.dumps(self.git_json, indent=2))
 
     def commit_git(self, commit_log):
-        target = self.git_json["staged"][:1]
-        print("Commited these file..\n" + target)
-        self.git_json["git_repo"] += target
-        self.git_json["log"]
+        target = self.git_json["staged"]
+        print(target)
+        self.git_json["git_repo"][commit_log] = target
 
+        self.git_json["staged"] = {}
 
-        self.git_json["staged"] = self.git_json["staged"][:1]
-
-
-
+        with open(os.path.join(self.abspath_root_dir, self.current_repo_name, 'git.json'), 'w') as f:
+            f.write(json.dumps(self.git_json, indent=2))
 
     def log_git(self):
-        pass
+        print(self.git_json["git_repo"])
 
 
 if __name__ == "__main__":
