@@ -106,7 +106,7 @@ class GitShell:
         target = self.git_json["staged"]
         for f in target:
             self.git_json["working_tree"]["unmodified"][f] = target[f]
-
+        commit_log = commit_log + "\t" + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.git_json["git_repo"][commit_log] = target
         self.git_json["staged"] = {}
 
@@ -129,7 +129,7 @@ class GitShell:
 
     def load_json(self):
         with open(os.path.join(self.abspath_root_dir, self.current_repo_name, 'git.json'), 'r') as f:
-                f.write(json.dumps(self.git_json, indent=2))
+                self.git_json = json.load(f)
 
     def log_git(self):
         print(self.git_json["git_repo"])
