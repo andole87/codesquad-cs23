@@ -1,6 +1,10 @@
 import os
+import sys
+import time
 import datetime
 import json
+from distutils.dir_util import copy_tree
+from distutils.dir_util import remove_tree
 
 
 class GitShell:
@@ -11,13 +15,14 @@ class GitShell:
     current_repo_name = ""
 
     def __init__(self, *args, **kwargs):
+        
         self.command_dic = {
             "init": self.init_git, "status": self.status_git,
             "checkout": self.checkout_git, "new": self.new_git,
             "add": self.add_git, "commit": self.commit_git,
-            "log": self.log_git,
-            "touch": self.touch_git,
-            "push": self.push_git,
+            "log": self.log_git, "touch": self.touch_git,
+            "push": self.push_git, "clone": self.clone_git,
+            "delete": self.delete_git,
         }
 
         self.repos_list = [name for name in os.listdir(self.abspath_root_dir)
@@ -52,6 +57,8 @@ class GitShell:
             self.status_git()
         elif _parsed_command[0] == "log":
             self.log_git()
+        elif _parsed_command[0] == "clone":
+            self.clone_git(_parsed_command[1], _parsed_command[2])
         else:
             self.command_dic[_parsed_command[0]](_parsed_command[1])
 
@@ -65,9 +72,13 @@ class GitShell:
         self.repos_list.append(repo_name)
         print("created  <{}> repository.".format(repo_name))
 
-    def status_git(self):
+    def status_git(self, *args):
         if self.current_repo_name == "":
             print("\n".join(self.repos_list))
+        elif len(args) == 1:
+            with open(os.path.join(self.abspath_root_dir, args[0], 'git.json'), 'r') as f:
+                remote_git_json = json.load(f)
+            print(remote_git_json["working_tree"])
         else:
             self.checkout_status()
 
@@ -145,6 +156,23 @@ class GitShell:
 
         with open(os.path.join(self.abspath_root_dir, remote_name, 'git.json'), 'w') as f:
             f.write(json.dumps(self.git_json, indent=2))
+
+    def clone_git(self, remote_name, local_name):
+        if not remote_name in self.repos_list:
+            raise Exception("No exist named {} repository".format(remote_name))
+
+        copy_tree(os.path.join(self.abspath_root_dir, remote_name),
+                  os.path.join(self.abspath_root_dir, local_name))
+        print("{} is cloned to {}.".format(remote_name, local_name))
+
+    def delete_git(self, repo_name):
+        if not repo_name in self.repos_list:
+            raise Exception("No exist named {} repository".format(repo_name))
+
+        if input("ARE YOU SURE TO DELETE {} ? (Y/N)".format(repo_name)).islower() == "y":
+            remove_tree(os.path.join(self.abspath_root_dir, repo_name))
+        else:
+            print("Aborted")
 
 
 if __name__ == "__main__":
