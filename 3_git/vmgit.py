@@ -1,6 +1,7 @@
 import os
 import datetime
 import json
+import andoleDic
 
 
 class GitShell:
@@ -24,9 +25,9 @@ class GitShell:
 
         self.git_json = {
             "working_tree": {
-                "untracked": {},
-                "unmodified": {},
-                "modified": {},
+                "untracked": andoleDic.Dic(),
+                "unmodified": andoleDic.Dic(),
+                "modified": andoleDic.Dic(),
             },
             "staged": {},
             "git_repo": {},
@@ -97,16 +98,16 @@ class GitShell:
             f.write(json.dumps(self.git_json, indent=2))
 
     def add_git(self, file_name):
-        if file_name == ".":
-            target = self.git_json["working_tree"]["untracked"] + self.git_json["working_tree"]["modified"]
-        else:
-            if file_name in self.git_json["working_tree"]["untracked"].keys():
-                target = {file_name: self.git_json["working_tree"]["untracked"][file_name]}
-            elif file_name in self.git_json["working_tree"]["modified"].keys():
-                target = {file_name: self.git_json["working_tree"]["untracked"][file_name]}
 
-        for x in target.keys():
-            self.git_json["staged"][x] = target[x]
+        if file_name in self.git_json["working_tree"]["untracked"]:
+            target_info = self.git_json["working_tree"]["untracked"].pop(file_name)
+        elif file_name in self.git_json["working_tree"]["modified"]:
+            target_info = self.git_json["working_tree"]["modified"].pop(file_name)
+        else:
+            raise Exception("{} not exist.".format(file_name))
+
+        self.git_json["staged"][file_name] = target_info
+        self.git_json["working_tree"]["unmodified"][file_name] = target_info
 
         with open(os.path.join(self.abspath_root_dir, self.current_repo_name, 'git.json'), 'w') as f:
             f.write(json.dumps(self.git_json, indent=2))
