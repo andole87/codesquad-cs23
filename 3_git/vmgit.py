@@ -17,6 +17,7 @@ class GitShell:
             "add": self.add_git, "commit": self.commit_git,
             "log": self.log_git,
             "touch": self.touch_git,
+            "push": self.push_git,
         }
 
         self.repos_list = [name for name in os.listdir(self.abspath_root_dir)
@@ -93,9 +94,11 @@ class GitShell:
     def add_git(self, file_name):
 
         if file_name in self.git_json["working_tree"]["untracked"]:
-            target_info = self.git_json["working_tree"]["untracked"].pop(file_name)
+            target_info = self.git_json["working_tree"]["untracked"].pop(
+                file_name)
         elif file_name in self.git_json["working_tree"]["modified"]:
-            target_info = self.git_json["working_tree"]["modified"].pop(file_name)
+            target_info = self.git_json["working_tree"]["modified"].pop(
+                file_name)
         else:
             raise Exception("{} not exist.".format(file_name))
 
@@ -106,7 +109,8 @@ class GitShell:
         target = self.git_json["staged"]
         for f in target:
             self.git_json["working_tree"]["unmodified"][f] = target[f]
-        commit_log = commit_log + "\t" + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        commit_log = commit_log + "\t" + \
+            datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.git_json["git_repo"][commit_log] = target
         self.git_json["staged"] = {}
 
@@ -117,10 +121,11 @@ class GitShell:
         for commit_message in self.git_json["git_repo"]:
             if file_name in self.git_json["git_repo"][commit_message]:
                 self.git_json["working_tree"]["unmodified"].pop(file_name)
-                self.git_json["working_tree"]["modified"][file_name] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                self.git_json["working_tree"]["modified"][file_name] = datetime.datetime.now(
+                ).strftime("%Y-%m-%d %H:%M:%S")
                 self.save_json()
                 return
-        
+
         self.new_git(file_name)
 
     def save_json(self):
@@ -133,6 +138,13 @@ class GitShell:
 
     def log_git(self):
         print(self.git_json["git_repo"])
+
+    def push_git(self, remote_name):
+        if not remote_name in repos_list:
+            raise Exception("No exist named {} repository".format(remote_name))
+
+        with open(os.path.join(self.abspath_root_dir, remote_name, 'git.json'), 'w') as f:
+            f.write(json.dumps(self.git_json, indent=2))
 
 
 if __name__ == "__main__":
