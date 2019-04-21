@@ -1,7 +1,6 @@
 import os
 import datetime
 import json
-import andoleDic
 
 
 class GitShell:
@@ -10,14 +9,14 @@ class GitShell:
     repos_list = []
     abspath_root_dir = os.path.dirname(os.path.abspath(__file__))
     current_repo_name = ""
-    is_checkout = False
 
     def __init__(self, *args, **kwargs):
         self.command_dic = {
             "init": self.init_git, "status": self.status_git,
             "checkout": self.checkout_git, "new": self.new_git,
             "add": self.add_git, "commit": self.commit_git,
-            "log": self.log_git
+            "log": self.log_git,
+            "touch": self.touch_git,
         }
 
         self.repos_list = [name for name in os.listdir(self.abspath_root_dir)
@@ -25,9 +24,9 @@ class GitShell:
 
         self.git_json = {
             "working_tree": {
-                "untracked": andoleDic.Dic(),
-                "unmodified": andoleDic.Dic(),
-                "modified": andoleDic.Dic(),
+                "untracked": {},
+                "unmodified": {},
+                "modified": {},
             },
             "staged": {},
             "git_repo": {},
@@ -66,10 +65,10 @@ class GitShell:
         print("created  <{}> repository.".format(repo_name))
 
     def status_git(self):
-        if self.is_checkout:
-            self.checkout_status()
-        else:
+        if self.current_repo_name == "":
             print("\n".join(self.repos_list))
+        else:
+            self.checkout_status()
 
     def checkout_status(self):
         print(self.git_json["working_tree"])
@@ -78,15 +77,9 @@ class GitShell:
         if not repo_name in self.repos_list:
             raise Exception("{} not exsits".format(repo_name))
 
-        if self.is_checkout:
-            with open(os.path.join(self.abspath_root_dir, self.current_repo_name, 'git.json'), 'w') as f:
-                f.write(json.dumps(self.git_json, indent=2))
-
         print("/{}/checkout".format(repo_name))
-        self.is_checkout = True
         self.current_repo_name = repo_name
-        with open(os.path.join(self.abspath_root_dir, self.current_repo_name, 'git.json'), 'r') as f:
-            self.git_json = json.load(f)
+        self.load_json()
 
     def new_git(self, file_name):
         f = open(os.path.join(self.abspath_root_dir,
@@ -94,8 +87,8 @@ class GitShell:
         f.close()
         self.git_json["working_tree"]["untracked"][file_name] = datetime.datetime.now().strftime(
             "%Y-%m-%d %H:%M:%S")
-        with open(os.path.join(self.abspath_root_dir, self.current_repo_name, 'git.json'), 'w') as f:
-            f.write(json.dumps(self.git_json, indent=2))
+
+        self.save_json()
 
     def add_git(self, file_name):
 
@@ -107,20 +100,36 @@ class GitShell:
             raise Exception("{} not exist.".format(file_name))
 
         self.git_json["staged"][file_name] = target_info
-        self.git_json["working_tree"]["unmodified"][file_name] = target_info
-
-        with open(os.path.join(self.abspath_root_dir, self.current_repo_name, 'git.json'), 'w') as f:
-            f.write(json.dumps(self.git_json, indent=2))
+        self.save_json()
 
     def commit_git(self, commit_log):
         target = self.git_json["staged"]
-        print(target)
-        self.git_json["git_repo"][commit_log] = target
+        for f in target:
+            self.git_json["working_tree"]["unmodified"][f] = target[f]
 
+        self.git_json["git_repo"][commit_log] = target
         self.git_json["staged"] = {}
 
+        self.save_json()
+
+    def touch_git(self, file_name):
+
+        for commit_message in self.git_json["git_repo"]:
+            if file_name in self.git_json["git_repo"][commit_message]:
+                self.git_json["working_tree"]["unmodified"].pop(file_name)
+                self.git_json["working_tree"]["modified"][file_name] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                self.save_json()
+                return
+        
+        self.new_git(file_name)
+
+    def save_json(self):
         with open(os.path.join(self.abspath_root_dir, self.current_repo_name, 'git.json'), 'w') as f:
             f.write(json.dumps(self.git_json, indent=2))
+
+    def load_json(self):
+        with open(os.path.join(self.abspath_root_dir, self.current_repo_name, 'git.json'), 'r') as f:
+                f.write(json.dumps(self.git_json, indent=2))
 
     def log_git(self):
         print(self.git_json["git_repo"])
