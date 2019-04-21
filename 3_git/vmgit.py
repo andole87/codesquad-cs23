@@ -48,7 +48,7 @@ class GitShell:
         try:
             while True:
                 input_command = input(
-                    "andole_vmgit_prompt ~{}>>>".format(self.current_repo_name))
+                    "andole_vmgit_prompt ~{} ?>".format(self.current_repo_name))
                 if input_command == "exit":
                     break
                 self.parse_command(input_command)
@@ -80,7 +80,7 @@ class GitShell:
         os.makedirs(repo_path)
 
         with open(os.path.join(repo_path, 'git.json'), 'w') as f:
-            json.dump(self.git_template, f)
+            f.write(json.dumps(self.git_template, indent=2))
 
         self.repos_list.append(repo_name)
         print("<{}> repo was created.".format(repo_name))
@@ -196,7 +196,7 @@ class GitShell:
         self.check_repo(remote_name)
 
         copy_tree(os.path.join(self.abspath_root_dir, remote_name),
-                  os.path.join(self.abspath_root_dir, local_name))
+                  os.path.join(self.abspath_root_dir, self.current_repo_name, local_name))
         print("{} is cloned to {}.".format(remote_name, local_name))
 
 
@@ -204,7 +204,7 @@ class GitShell:
     def delete_git(self, repo_name):
         self.check_repo(repo_name)
 
-        if input("ARE YOU SURE TO DELETE {} ? (Y/N)".format(repo_name)).islower() == "y":
+        if input("ARE YOU SURE TO DELETE {} ? (Y/N)".format(repo_name)).lower() == "y":
             remove_tree(os.path.join(self.abspath_root_dir, repo_name))
         else:
             print("Aborted")
